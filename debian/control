@@ -2,11 +2,12 @@ Source: npth
 Section: libdevel
 Priority: optional
 Maintainer: Eric Dorland <eric@debian.org>
-Build-Depends: debhelper (>= 9), dh-autoreconf
-Standards-Version: 3.9.6
-Homepage: http://www.gnupg.org/
-Vcs-Git: git://anonscm.debian.org/users/eric/npth.git
-Vcs-Browser: http://anonscm.debian.org/gitweb/?p=users/eric/npth.git
+Build-Depends: debhelper (>= 10)
+Build-Depends-Indep: mingw-w64
+Standards-Version: 3.9.8
+Homepage: https://www.gnupg.org/
+Vcs-Git: https://anonscm.debian.org/git/users/eric/npth.git
+Vcs-Browser: https://anonscm.debian.org/cgit/users/eric/npth.git
 
 Package: libnpth0-dev
 Architecture: any
@@ -17,7 +18,7 @@ Description: headers for libnpth0
  nPth is a non-preemptive threads implementation using an API very
  similar to the one known from GNU Pth. It has been designed as a
  replacement of GNU Pth for non-ancient operating systems. In
- contrast to GNU Pth is based on the system's standard threads
+ contrast to GNU Pth it is based on the system's standard threads
  implementation. Thus nPth allows the use of libraries which are not
  compatible to GNU Pth.
  .
@@ -33,22 +34,24 @@ Description: replacement for GNU Pth using system threads
  nPth is a non-preemptive threads implementation using an API very
  similar to the one known from GNU Pth. It has been designed as a
  replacement of GNU Pth for non-ancient operating systems. In
- contrast to GNU Pth is based on the system's standard threads
+ contrast to GNU Pth it is based on the system's standard threads
  implementation. Thus nPth allows the use of libraries which are not
  compatible to GNU Pth.
 
-Package: libnpth0-dbg
-Architecture: any
-Multi-Arch: same
-Section: debug
+Package: libnpth-mingw-w64-dev
+Architecture: all
 Priority: extra
-Depends: libnpth0 (= ${binary:Version}), ${misc:Depends}
-Description: debugging symbols for libnpth0
+Section: libdevel
+Suggests: mingw-w64
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: replacement for GNU Pth using system threads (Windows dev)
  nPth is a non-preemptive threads implementation using an API very
  similar to the one known from GNU Pth. It has been designed as a
  replacement of GNU Pth for non-ancient operating systems. In
- contrast to GNU Pth is based on the system's standard threads
+ contrast to GNU Pth it is based on the system's standard threads
  implementation. Thus nPth allows the use of libraries which are not
  compatible to GNU Pth.
  .
- This package contains the debugging symbols for libnpth0.
+ This is a Windows version of nPth.  It's meant to be used when
+ cross-building software that targets the Windows platform, e.g. the
+ win32-loader component of Debian-Installer.

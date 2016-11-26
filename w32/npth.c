@@ -35,12 +35,13 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <io.h>
 
 #include "npth.h"
 
 #include <stdio.h>
 #define DEBUG_CALLS 1
-#define _npth_debug(x, ...) printf(__VA_ARGS__)
+#define _npth_debug(x, ...) fprintf(stderr, __VA_ARGS__)
 
 #ifndef TEST
 #undef  DEBUG_CALLS
@@ -56,6 +57,15 @@
    implements the single-user-thread policy, but also protects all our
    global data such as the thread_table.  */
 static CRITICAL_SECTION sceptre;
+
+/* This flag is set as soon as npth_init has been called or if any
+ * thread has been created.  It will never be cleared again.  The only
+ * purpose is to make npth_protect and npth_unprotect more robust in
+ * that they can be shortcut when npth_init has not yet been called.
+ * This is important for libraries which want to support nPth by using
+ * those two functions but may have be initialized before pPth. */
+static int initialized_or_any_threads;
+
 
 typedef struct npth_impl_s *npth_impl_t;
 #define MAX_THREADS 1024
@@ -150,8 +160,8 @@ enter_npth (const char *function)
   int res;
 
   if (DEBUG_CALLS)
-    _npth_debug (DEBUG_CALLS, "enter_npth (%s)\n",
-		 function ? function : "unknown");
+    _npth_debug (DEBUG_CALLS, "tid %lu: enter_npth (%s)\n",
+		 npth_self (), function ? function : "unknown");
   LeaveCriticalSection (&sceptre);
 }
 
@@ -162,8 +172,8 @@ leave_npth (const char *function)
   EnterCriticalSection (&sceptre);
 
   if (DEBUG_CALLS)
-    _npth_debug (DEBUG_CALLS, "leave_npth (%s)\n",
-		 function ? function : "");
+    _npth_debug (DEBUG_CALLS, "tid %lu: leave_npth (%s)\n",
+		 npth_self (), function ? function : "");
 }
 
 #define ENTER() enter_npth(__FUNCTION__)
@@ -319,6 +329,9 @@ npth_init (void)
   npth_impl_t thread;
 
   InitializeCriticalSection (&sceptre);
+
+  /* Track that we have been initialized.  */
+  initialized_or_any_threads = 1;
 
   /* Fake a thread table item for the main thread.  */
   tls_index = TlsAlloc();
@@ -1745,14 +1758,23 @@ npth_sendmsg (int fd, const struct msghdr *msg, int flags)
 void
 npth_unprotect (void)
 {
-  ENTER();
+  /* If we are not initialized we may not access the semaphore and
+   * thus we shortcut it. Note that in this case the unprotect/protect
+   * is not needed.  For failsafe reasons if an nPth thread has ever
+   * been created but nPth has accidentally not initialized we do not
+   * shortcut so that a stack backtrace (due to the access of the
+   * uninitialized semaphore) is more expressive.  */
+  if (initialized_or_any_threads)
+    ENTER();
 }
 
 
 void
 npth_protect (void)
 {
-  LEAVE();
+  /* See npth_unprotect for commentary.  */
+  if (initialized_or_any_threads)
+    LEAVE();
 }
 
 
