@@ -1,31 +1,21 @@
-/* npth.c - a lightweight implementation of pth over pthread.
-   Copyright (C) 2011, 2014 g10 Code GmbH
-
-   This file is part of NPTH.
-
-   NPTH is free software; you can redistribute it and/or modify it
-   under the terms of either
-
-   - the GNU Lesser General Public License as published by the Free
-   Software Foundation; either version 3 of the License, or (at
-   your option) any later version.
-
-   or
-
-   - the GNU General Public License as published by the Free
-   Software Foundation; either version 2 of the License, or (at
-   your option) any later version.
-
-   or both in parallel, as here.
-
-   NPTH is distributed in the hope that it will be useful, but WITHOUT
-   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-   or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
-   License for more details.
-
-   You should have received a copies of the GNU General Public License
-   and the GNU Lesser General Public License along with this program;
-   if not, see <http://www.gnu.org/licenses/>.  */
+/* npth.c - a lightweight implementation of pth over native threads
+ * Copyright (C) 2011, 2014 g10 Code GmbH
+ *
+ * This file is part of nPth.
+ *
+ * nPth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation; either version 2.1 of
+ * the License, or (at your option) any later version.
+ *
+ * nPth is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program; if not, see <https://www.gnu.org/licenses/>.
+ */
 
 /* We implement the join mechanism ourself.  */
 
@@ -55,15 +45,18 @@
 
 /* The global lock that excludes all threads but one.  Note that this
    implements the single-user-thread policy, but also protects all our
-   global data such as the thread_table.  */
+   global data such as the thread_table.  GOT_SCEPTRE is a flag used
+   for debugging to tell wether we hold SCEPTRE.  */
 static CRITICAL_SECTION sceptre;
+static int got_sceptre;
+
 
 /* This flag is set as soon as npth_init has been called or if any
  * thread has been created.  It will never be cleared again.  The only
  * purpose is to make npth_protect and npth_unprotect more robust in
  * that they can be shortcut when npth_init has not yet been called.
  * This is important for libraries which want to support nPth by using
- * those two functions but may have be initialized before pPth. */
+ * those two functions but may have been initialized before nPth. */
 static int initialized_or_any_threads;
 
 
@@ -162,6 +155,7 @@ enter_npth (const char *function)
   if (DEBUG_CALLS)
     _npth_debug (DEBUG_CALLS, "tid %lu: enter_npth (%s)\n",
 		 npth_self (), function ? function : "unknown");
+  got_sceptre = 0;
   LeaveCriticalSection (&sceptre);
 }
 
@@ -170,6 +164,7 @@ static void
 leave_npth (const char *function)
 {
   EnterCriticalSection (&sceptre);
+  got_sceptre = 1;
 
   if (DEBUG_CALLS)
     _npth_debug (DEBUG_CALLS, "tid %lu: leave_npth (%s)\n",
@@ -389,6 +384,7 @@ int
 npth_attr_destroy (npth_attr_t *attr)
 {
   free (*attr);
+  *attr = NULL;
   return 0;
 }
 
@@ -535,6 +531,9 @@ npth_create (npth_t *newthread, const npth_attr_t *user_attr,
   *newthread = thread_id;
 
   ResumeThread (thread->handle);
+
+  if (attr_allocated)
+    npth_attr_destroy (&attr);
 
   return 0;
 
@@ -1776,6 +1775,14 @@ npth_protect (void)
   if (initialized_or_any_threads)
     LEAVE();
 }
+
+
+int
+npth_is_protected (void)
+{
+  return got_sceptre;
+}
+
 
 
 /* Maximum number of extra handles.  We can only support 31 as that is

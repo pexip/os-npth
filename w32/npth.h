@@ -1,31 +1,21 @@
-/* npth.h - a lightweight implementation of pth over pthread.
-   Copyright (C) 2011, 2015 g10 Code GmbH
-
-   This file is part of NPTH.
-
-   NPTH is free software; you can redistribute it and/or modify it
-   under the terms of either
-
-   - the GNU Lesser General Public License as published by the Free
-   Software Foundation; either version 3 of the License, or (at
-   your option) any later version.
-
-   or
-
-   - the GNU General Public License as published by the Free
-   Software Foundation; either version 2 of the License, or (at
-   your option) any later version.
-
-   or both in parallel, as here.
-
-   NPTH is distributed in the hope that it will be useful, but WITHOUT
-   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-   or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
-   License for more details.
-
-   You should have received a copies of the GNU General Public License
-   and the GNU Lesser General Public License along with this program;
-   if not, see <http://www.gnu.org/licenses/>.  */
+/* npth.h - a lightweight implementation of pth over native threads
+ * Copyright (C) 2011, 2015 g10 Code GmbH
+ *
+ * This file is part of nPth.
+ *
+ * nPth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation; either version 2.1 of
+ * the License, or (at your option) any later version.
+ *
+ * nPth is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program; if not, see <https://www.gnu.org/licenses/>.
+ */
 
 #ifndef _NPTH_H
 #define _NPTH_H
@@ -47,14 +37,14 @@ extern "C" {
 
 struct msghdr;
 
-/* At least with version 2 the mingw-w64 headers define timespec.  For
-   older compilers we keep our replacement.  */
-#if __MINGW64_VERSION_MAJOR < 2
+/* The mingw-w64 headers define timespec.  For older compilers we keep
+   our replacement.  */
+#ifndef __MINGW64_VERSION_MAJOR
 struct timespec {
   long tv_sec;                 /* seconds */
   long tv_nsec;                /* nanoseconds */
 };
-#endif /*__MINGW64_VERSION_MAJOR < 2*/
+#endif /*__MINGW64_VERSION_MAJOR */
 
 
 #ifndef ETIMEDOUT
@@ -198,6 +188,9 @@ int npth_sendmsg (int fd, const struct msghdr *msg, int flags);
 void npth_unprotect (void);
 void npth_protect (void);
 
+/* Return true when we hold the sceptre.  This is used to debug
+ * problems with npth_unprotect and npth_protect.  */
+int npth_is_protected (void);
 
 int npth_clock_gettime(struct timespec *tp);
 

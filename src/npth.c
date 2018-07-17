@@ -1,31 +1,21 @@
 /* npth.c - a lightweight implementation of pth over pthread.
-   Copyright (C) 2011 g10 Code GmbH
-
-   This file is part of NPTH.
-
-   NPTH is free software; you can redistribute it and/or modify it
-   under the terms of either
-
-   - the GNU Lesser General Public License as published by the Free
-   Software Foundation; either version 3 of the License, or (at
-   your option) any later version.
-
-   or
-
-   - the GNU General Public License as published by the Free
-   Software Foundation; either version 2 of the License, or (at
-   your option) any later version.
-
-   or both in parallel, as here.
-
-   NPTH is distributed in the hope that it will be useful, but WITHOUT
-   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-   or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
-   License for more details.
-
-   You should have received a copies of the GNU General Public License
-   and the GNU Lesser General Public License along with this program;
-   if not, see <http://www.gnu.org/licenses/>.  */
+ * Copyright (C) 2011 g10 Code GmbH
+ *
+ * This file is part of nPth.
+ *
+ * nPth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation; either version 2.1 of
+ * the License, or (at your option) any later version.
+ *
+ * nPth is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+ * the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program; if not, see <https://www.gnu.org/licenses/>.
+ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -39,7 +29,42 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <semaphore.h>
+#ifdef HAVE_LIB_DISPATCH
+# include <dispatch/dispatch.h>
+typedef dispatch_semaphore_t sem_t;
+
+/* This glue code is for macOS which does not have full implementation
+   of POSIX semaphore.  On macOS, using semaphore in Grand Central
+   Dispatch library is better than using the partial implementation of
+   POSIX semaphore where sem_init doesn't work well.
+ */
+
+static int
+sem_init (sem_t *sem, int is_shared, unsigned int value)
+{
+  (void)is_shared;
+  if ((*sem = dispatch_semaphore_create (value)) == NULL)
+    return -1;
+  else
+    return 0;
+}
+
+static int
+sem_post (sem_t *sem)
+{
+  dispatch_semaphore_signal (*sem);
+  return 0;
+}
+
+static int
+sem_wait (sem_t *sem)
+{
+  dispatch_semaphore_wait (*sem, DISPATCH_TIME_FOREVER);
+  return 0;
+}
+#else
+# include <semaphore.h>
+#endif
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
 #endif
@@ -57,9 +82,12 @@
    semaphore is safe and a mutex is not safe is that a mutex has an
    owner, while a semaphore does not.)  We init sceptre to a static
    buffer for use by sem_init; in case sem_open is used instead
-   SCEPTRE will changed to the value returned by sem_open.  */
+   SCEPTRE will changed to the value returned by sem_open.
+   GOT_SCEPTRE is a flag used for debugging to tell wether we hold
+   SCEPTRE.  */
 static sem_t sceptre_buffer;
 static sem_t *sceptre = &sceptre_buffer;
+static int got_sceptre;
 
 /* Configure defines HAVE_FORK_UNSAFE_SEMAPHORE if child process can't
    access non-shared unnamed semaphore which is created by its parent.
@@ -128,7 +156,7 @@ busy_wait_for (trylock_func_t trylock, void *lock,
 	  break;
 	}
 
-      if (! npth_timercmp (abstime, &ts, <))
+      if (npth_timercmp (abstime, &ts, <))
 	{
 	  err = ETIMEDOUT;
 	  break;
@@ -153,6 +181,7 @@ enter_npth (void)
 {
   int res;
 
+  got_sceptre = 0;
   res = sem_post (sceptre);
   assert (res == 0);
 }
@@ -169,39 +198,12 @@ leave_npth (void)
   } while (res < 0 && errno == EINTR);
 
   assert (!res);
+  got_sceptre = 1;
   errno = save_errno;
 }
 
 #define ENTER() enter_npth ()
 #define LEAVE() leave_npth ()
-
-
-static int
-try_sem_open (sem_t **r_sem)
-{
-  sem_t *sem;
-  char name [256];
-  int counter = 0;
-
-  do
-    {
-      snprintf (name, sizeof name - 1, "/npth-sceptre-%lu-%u",
-                (unsigned long)getpid (), counter);
-      name[sizeof name -1] = 0;
-      counter++;
-
-      sem = sem_open (name, (O_CREAT | O_EXCL), (S_IRUSR | S_IWUSR), 1);
-      if (sem != SEM_FAILED)
-        {
-          *r_sem = sem;
-          return 0;
-        }
-      fprintf (stderr, " semOpen(%s): %s\n", name, strerror (errno));
-    }
-  while (errno == EEXIST);
-
-  return -1;
-}
 
 
 int
@@ -220,26 +222,21 @@ npth_init (void)
 
   /* The semaphore is binary.  */
   res = sem_init (sceptre, NPTH_SEMAPHORE_PSHARED, 1);
+  /* There are some versions of operating systems which have sem_init
+     symbol defined but the call actually returns ENOSYS at runtime.
+     We know this problem for older versions of AIX (<= 4.3.3) and
+     macOS.  For macOS, we use semaphore in Grand Central Dispatch
+     library, so ENOSYS doesn't happen.  We only support AIX >= 5.2,
+     where sem_init is supported.
+   */
   if (res < 0)
     {
-      /* Mac OSX and some AIX versions have sem_init but return
-         ENOSYS.  This is allowed according to some POSIX versions but
-         the informative section is quite fuzzy about it.  We resort
-         to sem_open in this case.  */
-      if (errno == ENOSYS)
-        {
-          if (try_sem_open (&sceptre))
-            return errno;
-        }
-      else
-        {
-          /* POSIX.1-2001 defines the semaphore interface but does not
-             specify the return value for success.  Thus we better
-             bail out on error only on a POSIX.1-2008 system.  */
+      /* POSIX.1-2001 defines the semaphore interface but does not
+         specify the return value for success.  Thus we better
+         bail out on error only on a POSIX.1-2008 system.  */
 #if _POSIX_C_SOURCE >= 200809L
-          return errno;
+      return errno;
 #endif
-        }
     }
 
   LEAVE();
@@ -746,6 +743,13 @@ npth_protect (void)
   /* See npth_unprotect for commentary.  */
   if (initialized_or_any_threads)
     LEAVE();
+}
+
+
+int
+npth_is_protected (void)
+{
+  return got_sceptre;
 }
 
 
