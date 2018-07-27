@@ -1,12 +1,14 @@
 Source: npth
 Section: libdevel
 Priority: optional
-Maintainer: Eric Dorland <eric@debian.org>
+Maintainer: Pexip AS <packaging@pexip.com>
+XSBC-Pexip-Original-Maintainer: Eric Dorland <eric@debian.org>
 Build-Depends: debhelper (>= 9), dh-autoreconf
 Standards-Version: 3.9.6
 Homepage: http://www.gnupg.org/
 Vcs-Git: git://anonscm.debian.org/users/eric/npth.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=users/eric/npth.git
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ jessie
 
 Package: libnpth0-dev
 Architecture: any
