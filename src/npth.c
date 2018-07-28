@@ -32,9 +32,13 @@
 #endif
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <semaphore.h>
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
@@ -51,14 +55,51 @@
    the application or other libraries call fork(), including from a
    signal handler.  sem_post is async-signal-safe.  (The reason a
    semaphore is safe and a mutex is not safe is that a mutex has an
-   owner, while a semaphore does not.)  */
-static sem_t sceptre;
+   owner, while a semaphore does not.)  We init sceptre to a static
+   buffer for use by sem_init; in case sem_open is used instead
+   SCEPTRE will changed to the value returned by sem_open.  */
+static sem_t sceptre_buffer;
+static sem_t *sceptre = &sceptre_buffer;
+
+/* Configure defines HAVE_FORK_UNSAFE_SEMAPHORE if child process can't
+   access non-shared unnamed semaphore which is created by its parent.
+
+   We use unnamed semaphore (if available) for the global lock.  The
+   specific semaphore is only valid for those threads in a process,
+   and it is no use by other processes.  Thus, PSHARED argument for
+   sem_init is naturally 0.
+
+   However, there are daemon-like applications which use fork after
+   npth's initialization by npth_init.  In this case, a child process
+   uses the semaphore which was created by its parent process, while
+   parent does nothing with the semaphore.  In some system (e.g. AIX),
+   access by child process to non-shared unnamed semaphore is
+   prohibited.  For such a system, HAVE_FORK_UNSAFE_SEMAPHORE should
+   be defined, so that unnamed semaphore will be created with the
+   option PSHARED=1.  The purpose of the setting of PSHARED=1 is only
+   for allowing the access of the lock by child process.  For NPTH, it
+   does not mean any other interactions between processes.
+
+ */
+#ifdef HAVE_FORK_UNSAFE_SEMAPHORE
+#define NPTH_SEMAPHORE_PSHARED 1
+#else
+#define NPTH_SEMAPHORE_PSHARED 0
+#endif
 
 /* The main thread is the active thread at the time pth_init was
    called.  As of now it is only useful for debugging.  The volatile
    make sure the compiler does not eliminate this set but not used
    variable.  */
 static volatile pthread_t main_thread;
+
+/* This flag is set as soon as npth_init has been called or if any
+ * thread has been created.  It will never be cleared again.  The only
+ * purpose is to make npth_protect and npth_unprotect more robust in
+ * that they can be shortcut when npth_init has not yet been called.
+ * This is important for libraries which want to support nPth by using
+ * those two functions but may have be initialized before pPth. */
+static int initialized_or_any_threads;
 
 /* Systems that don't have pthread_mutex_timedlock get a busy wait
    implementation that probes the lock every BUSY_WAIT_INTERVAL
@@ -112,7 +153,7 @@ enter_npth (void)
 {
   int res;
 
-  res = sem_post (&sceptre);
+  res = sem_post (sceptre);
   assert (res == 0);
 }
 
@@ -121,16 +162,46 @@ static void
 leave_npth (void)
 {
   int res;
+  int save_errno = errno;
 
   do {
-    res = sem_wait (&sceptre);
+    res = sem_wait (sceptre);
   } while (res < 0 && errno == EINTR);
 
   assert (!res);
+  errno = save_errno;
 }
 
 #define ENTER() enter_npth ()
 #define LEAVE() leave_npth ()
+
+
+static int
+try_sem_open (sem_t **r_sem)
+{
+  sem_t *sem;
+  char name [256];
+  int counter = 0;
+
+  do
+    {
+      snprintf (name, sizeof name - 1, "/npth-sceptre-%lu-%u",
+                (unsigned long)getpid (), counter);
+      name[sizeof name -1] = 0;
+      counter++;
+
+      sem = sem_open (name, (O_CREAT | O_EXCL), (S_IRUSR | S_IWUSR), 1);
+      if (sem != SEM_FAILED)
+        {
+          *r_sem = sem;
+          return 0;
+        }
+      fprintf (stderr, " semOpen(%s): %s\n", name, strerror (errno));
+    }
+  while (errno == EEXIST);
+
+  return -1;
+}
 
 
 int
@@ -140,16 +211,35 @@ npth_init (void)
 
   main_thread = pthread_self();
 
-  /* The semaphore is not shared and binary.  */
-  res = sem_init(&sceptre, 0, 1);
+  /* Track that we have been initialized.  */
+  initialized_or_any_threads |= 1;
+
+  /* Better reset ERRNO so that we know that it has been set by
+     sem_init.  */
+  errno = 0;
+
+  /* The semaphore is binary.  */
+  res = sem_init (sceptre, NPTH_SEMAPHORE_PSHARED, 1);
   if (res < 0)
     {
-      /* POSIX.1-2001 defines the semaphore interface but does not
-         specify the return value for success.  Thus we better bail
-         out on error only on a POSIX.1-2008 system.  */
+      /* Mac OSX and some AIX versions have sem_init but return
+         ENOSYS.  This is allowed according to some POSIX versions but
+         the informative section is quite fuzzy about it.  We resort
+         to sem_open in this case.  */
+      if (errno == ENOSYS)
+        {
+          if (try_sem_open (&sceptre))
+            return errno;
+        }
+      else
+        {
+          /* POSIX.1-2001 defines the semaphore interface but does not
+             specify the return value for success.  Thus we better
+             bail out on error only on a POSIX.1-2008 system.  */
 #if _POSIX_C_SOURCE >= 200809L
-      return errno;
+          return errno;
 #endif
+        }
     }
 
   LEAVE();
@@ -178,7 +268,14 @@ npth_setname_np (npth_t target_thread, const char *name)
 #ifdef __NetBSD__
   return pthread_setname_np (target_thread, "%s", (void*) name);
 #else
+#ifdef __APPLE__
+  if (target_thread == npth_self ())
+    return pthread_setname_np (name);
+  else
+    return ENOTSUP;
+#else
   return pthread_setname_np (target_thread, name);
+#endif
 #endif
 #else
   (void)target_thread;
@@ -228,6 +325,8 @@ npth_create (npth_t *thread, const npth_attr_t *attr,
   startup = malloc (sizeof (*startup));
   if (!startup)
     return errno;
+
+  initialized_or_any_threads |= 2;
 
   startup->start_routine = start_routine;
   startup->arg = arg;
@@ -630,14 +729,23 @@ npth_sendmsg (int fd, const struct msghdr *msg, int flags)
 void
 npth_unprotect (void)
 {
-  ENTER();
+  /* If we are not initialized we may not access the semaphore and
+   * thus we shortcut it. Note that in this case the unprotect/protect
+   * is not needed.  For failsafe reasons if an nPth thread has ever
+   * been created but nPth has accidentally not initialized we do not
+   * shortcut so that a stack backtrace (due to the access of the
+   * uninitialized semaphore) is more expressive.  */
+  if (initialized_or_any_threads)
+    ENTER();
 }
 
 
 void
 npth_protect (void)
 {
-  LEAVE();
+  /* See npth_unprotect for commentary.  */
+  if (initialized_or_any_threads)
+    LEAVE();
 }
 
 
