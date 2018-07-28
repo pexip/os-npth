@@ -28,14 +28,14 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.67])
-min_automake_version="1.11"
+min_automake_version="1.14"
 
 # To build a release you need to create a tag with the version number
 # (git tag -s npth-n.m) and run "./autogen.sh --force".  Please bump
 # the version number immediately after the release and do another
 # commit and push so that the git magic is able to work.
 # See below for the LT versions.
-m4_define(my_version, [1.0])
+m4_define(my_version, [1.3])
 
 # Below is m4 magic to extract and compute the git revision number,
 # the decimalized short revision number, a beta version string and a
@@ -61,7 +61,7 @@ AC_INIT([npth],[my_full_version],[gnupg-devel@gnupg.org])
 #
 LIBNPTH_LT_CURRENT=0
 LIBNPTH_LT_AGE=0
-LIBNPTH_LT_REVISION=3
+LIBNPTH_LT_REVISION=6
 
 # If the API is changed in an incompatible way: increment the next counter.
 NPTH_CONFIG_API_VERSION=1
@@ -74,7 +74,7 @@ AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_SRCDIR([src/npth.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
+AM_INIT_AUTOMAKE([serial-tests dist-bzip2 no-dist-gzip])
 AM_MAINTAINER_MODE
 AC_CANONICAL_HOST
 AM_SILENT_RULES
@@ -125,9 +125,15 @@ case "${host}" in
     *-apple-darwin*)
         AC_DEFINE(_XOPEN_SOURCE, 500, Activate POSIX interface on MacOS X)
         ;;
+    *-*-aix*)
+	have_fork_unsafe_semaphore=yes
+        ;;
 esac
 
 AM_CONDITIONAL(HAVE_LD_VERSION_SCRIPT, test "$have_ld_version_script" = "yes")
+if test "$have_fork_unsafe_semaphore" = yes; then
+   AC_DEFINE(HAVE_FORK_UNSAFE_SEMAPHORE, 1, [Defined if we have fork-unsafe semaphore])
+fi
 
 # Set some default values
 config_libs="-lnpth"
@@ -168,16 +174,27 @@ AM_CONDITIONAL(HAVE_W64_SYSTEM, test "$have_w64_system" = yes)
 # Generate values for the DLL version info
 #
 if test "$have_w32_system" = yes; then
-    BUILD_TIMESTAMP=`date --iso-8601=minutes`
     BUILD_ISODATE=`date --iso-8601`
     changequote(,)dnl
     BUILD_FILEVERSION=`echo "$VERSION" | sed 's/\([0-9.]*\).*/\1./;s/\./,/g'`
     changequote([,])dnl
     BUILD_FILEVERSION="${BUILD_FILEVERSION}git_revision_dec"
 fi
-AC_SUBST(BUILD_TIMESTAMP)
 AC_SUBST(BUILD_ISODATE)
 AC_SUBST(BUILD_FILEVERSION)
+AC_ARG_ENABLE([build-timestamp],
+  AC_HELP_STRING([--enable-build-timestamp],
+                 [set an explicit build timestamp for reproducibility.
+                  (default is the current time in ISO-8601 format)]),
+     [if test "$enableval" = "yes"; then
+        BUILD_TIMESTAMP=`date -u +%Y-%m-%dT%H:%M+0000 2>/dev/null || date`
+      else
+        BUILD_TIMESTAMP="$enableval"
+      fi],
+     [BUILD_TIMESTAMP="<none>"])
+AC_SUBST(BUILD_TIMESTAMP)
+AC_DEFINE_UNQUOTED(BUILD_TIMESTAMP, "$BUILD_TIMESTAMP",
+                   [The time this package was configured for a build])
 
 
 #
@@ -237,9 +254,11 @@ AC_TYPE_SSIZE_T
 #
 # Checks for libraries and functions.
 #
+#   We test for pthread_detach because glibc 2.22 includes
+#   pthread_create but not pthread_detach.
 if test "$have_w32_system" = no; then
-  AC_SEARCH_LIBS([pthread_create],[pthread])
-  case "x$ac_cv_search_pthread_create" in
+  AC_SEARCH_LIBS([pthread_detach],[pthread])
+  case "x$ac_cv_search_pthread_detach" in
     xno)
       have_pthread=no
       ;;
@@ -248,7 +267,7 @@ if test "$have_w32_system" = no; then
       ;;
     *)
       have_pthread=yes
-      config_libs="$config_libs $ac_cv_search_pthread_create"
+      config_libs="$config_libs $ac_cv_search_pthread_detach"
       ;;
   esac
   if test "$have_pthread" != no; then
@@ -267,11 +286,21 @@ AC_CHECK_FUNCS([select pselect gettimeofday])
 npth_LIBSOCKET
 config_libs="$config_libs $LIBSOCKET"
 
-AC_SEARCH_LIBS([clock_gettime],[rt posix4])
-if test "x$ac_cv_search_clock_gettime" != no; then
-    AC_DEFINE(HAVE_CLOCK_GETTIME,1,
-              [Define to 1 if you have the `clock_gettime' function.])
-fi
+# Save and restore LIBS so e.g., -lrt, isn't added to it.  Otherwise, *all*
+# programs in the package would end up linked with that potentially-shared
+# library, inducing unnecessary run-time overhead.
+LIB_CLOCK_GETTIME=
+AC_SUBST([LIB_CLOCK_GETTIME])
+gl_saved_libs=$LIBS
+AC_SEARCH_LIBS([clock_gettime], [rt posix4],
+               [if test "$ac_cv_search_clock_gettime" != "none required"; then
+                  LIB_CLOCK_GETTIME=$ac_cv_search_clock_gettime
+                  config_libs="$config_libs $LIB_CLOCK_GETTIME"
+                fi
+                AC_DEFINE([HAVE_CLOCK_GETTIME],1,
+                  [Define to 1 if you have the `clock_gettime' function.])
+                ])
+LIBS=$gl_saved_libs
 
 
 #
