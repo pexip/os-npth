@@ -1,14 +1,14 @@
 # Makefile.am - Top level Makefile for npth.
 # Copyright (C) 2011 g10 Code GmbH
 #
-# This file is part of NPTH.
+# This file is part of nPth.
 #
-# NPTH is free software; you can redistribute it and/or modify it
+# nPth is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as
 # published by the Free Software Foundation; either version 2.1 of the
 # License, or (at your option) any later version.
 #
-# NPTH is distributed in the hope that it will be useful, but WITHOUT
+# nPth is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
 # or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General
 # Public License for more details.
@@ -20,7 +20,8 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-EXTRA_DIST = npth-config.in npth.m4 npth.spec.in autogen.sh autogen.rc HACKING
+EXTRA_DIST = npth-config.in npth.m4 npth.spec.in autogen.sh autogen.rc \
+             HACKING VERSION
 bin_SCRIPTS = npth-config
 m4datadir = $(datadir)/aclocal
 m4data_DATA = npth.m4
@@ -45,7 +46,6 @@ dist-hook: gen-ChangeLog
 	@set -e; \
 	sed -e 's/@pkg_version@/$(VERSION)/g' \
 	    $(top_srcdir)/npth.spec.in  > $(distdir)/npth.spec
-	echo "$(VERSION)" > $(distdir)/VERSION
 
 
 gen_start_date = 2011-12-01T00:00:00
