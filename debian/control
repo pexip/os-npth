@@ -9,7 +9,7 @@ Standards-Version: 3.9.8
 Homepage: https://www.gnupg.org/
 Vcs-Git: https://anonscm.debian.org/git/users/eric/npth.git
 Vcs-Browser: https://anonscm.debian.org/cgit/users/eric/npth.git
-XS-Pexip-Upstream: http://ftp.debian.org/debian/ stretch
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ buster
 
 Package: libnpth0-dev
 Architecture: any
