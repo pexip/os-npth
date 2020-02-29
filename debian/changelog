@@ -1,3 +1,9 @@
+npth (1.6-1pexip1) pexip; urgency=medium
+
+  * Migrate to Buster
+
+ -- Vincent Sanders <vince@pexip.com>  Sat, 29 Feb 2020 18:15:55 +0000
+
 npth (1.6-1) unstable; urgency=medium
 
   * New upstream release.
