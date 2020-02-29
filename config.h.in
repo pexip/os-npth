@@ -18,6 +18,9 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Defined if we have libdispatch */
+#undef HAVE_LIB_DISPATCH
+
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
@@ -115,7 +118,7 @@
    */
 #undef LT_OBJDIR
 
-/* Name of this package */
+/* Name of package */
 #undef PACKAGE
 
 /* Define to the address where bug reports for this package should be sent. */
@@ -161,7 +164,7 @@
 #endif
 
 
-/* Version of this package */
+/* Version number of package */
 #undef VERSION
 
 /* Define to 1 if on MINIX. */
@@ -177,9 +180,6 @@
 #ifndef _REENTRANT
 # define _REENTRANT 1
 #endif
-
-/* Activate POSIX interface on MacOS X */
-#undef _XOPEN_SOURCE
 
 /* Define to `int' if <sys/types.h> does not define. */
 #undef pid_t

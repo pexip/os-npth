@@ -1,12 +1,12 @@
 # This is a template.  The dist target uses it to create the real file.
 Summary: NPTH - the new GNU Portable Threads Library
 Name: npth
-Version: 1.3
+Version: 1.6
 Release: 1
 URL: http://www.gnupg.org/
 Source: ftp://ftp.gnupg.org/gcrypt/alpha
 Group: Development/Libraries
-Copyright: LGPLv3+/GPLv2+
+Copyright: LGPLv2+
 BuildRoot: %{_tmppath}/%{name}-%{version}
 BuildRequires: make
 Prereq: /sbin/ldconfig /sbin/install-info
