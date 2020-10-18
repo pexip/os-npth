@@ -1,3 +1,28 @@
+npth (1.6-3) unstable; urgency=medium
+
+  [ Debian Janitor ]
+  * Apply multi-arch hints.
+    + libnpth-mingw-w64-dev: Add Multi-Arch: foreign.
+
+  [ Eric Dorland ]
+  * Add dch section
+  * debhelper compat level to 12
+  * Standards-Version to 4.5.0.3
+  * Add Rules-Requires-Root: no
+  * Drop --ddeb-migration
+
+ -- Eric Dorland <eric@debian.org>  Sat, 17 Oct 2020 23:16:57 -0400
+
+npth (1.6-2) unstable; urgency=medium
+
+  [ Debian Janitor ]
+  * Trim trailing whitespace.
+  * Use secure copyright file specification URI.
+  * Set debhelper-compat version in Build-Depends.
+  * Remove Section on libnpth-mingw-w64-dev that duplicates source.
+
+ -- Eric Dorland <eric@debian.org>  Mon, 15 Jun 2020 00:40:15 -0400
+
 npth (1.6-1) unstable; urgency=medium
 
   * New upstream release.
@@ -156,5 +181,3 @@ npth (0.90-1) unstable; urgency=low
   * Initial release. (Closes: #672202)
 
  -- Eric Dorland <eric@debian.org>  Wed, 09 May 2012 00:21:14 -0400
-
-
