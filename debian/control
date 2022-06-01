@@ -3,9 +3,10 @@ Section: libdevel
 Priority: optional
 Maintainer: Pexip AS <packaging@pexip.com>
 XSBC-Pexip-Original-Maintainer: Eric Dorland <eric@debian.org>
-Build-Depends: debhelper (>= 11)
+Build-Depends: debhelper-compat (= 12)
 Build-Depends-Indep: mingw-w64
-Standards-Version: 4.1.4.1
+Standards-Version: 4.5.0.3
+Rules-Requires-Root: no
 Homepage: https://www.gnupg.org/
 Vcs-Git: https://salsa.debian.org/eric/npth.git
 Vcs-Browser: https://salsa.debian.org/eric/npth
@@ -42,9 +43,9 @@ Description: replacement for GNU Pth using system threads
 
 Package: libnpth-mingw-w64-dev
 Architecture: all
-Section: libdevel
 Suggests: mingw-w64
 Depends: ${misc:Depends}, ${shlibs:Depends}
+Multi-Arch: foreign
 Description: replacement for GNU Pth using system threads (Windows dev)
  nPth is a non-preemptive threads implementation using an API very
  similar to the one known from GNU Pth. It has been designed as a

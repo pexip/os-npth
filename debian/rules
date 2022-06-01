@@ -15,9 +15,6 @@ override_dh_auto_install-arch:
 override_dh_makeshlibs:
 	dh_makeshlibs -V
 
-override_dh_strip:
-	dh_strip --ddeb-migration='libnpth0-dbg (<< 1.2-2~)'
-
 ### "arch-independent" Windows builds: ###
 
 WIN_FLAGS=LDFLAGS="-Xlinker --no-insert-timestamp" \
