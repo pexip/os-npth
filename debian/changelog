@@ -1,3 +1,41 @@
+npth (1.8-3) unstable; urgency=medium
+
+  * Re-export upstream signing key without extra signatures.
+  * Add 0001-Remove-upstream-git-fanciness.patch (Closes: 1014154)
+  * Run wrap-and-sort -ast
+
+ -- Eric Dorland <eric@debian.org>  Fri, 11 Apr 2025 16:29:44 -0400
+
+npth (1.8-2) unstable; urgency=medium
+
+  * Import upstream signing key, https://gnupg.org/signature_key.asc
+  * Remove now redundant manpage
+  * Upgrade debhelper level to 13
+  * Update Standards-Version to 4.7.0.1
+  * Add Build-Depends-Package to symbols file
+  * Install the pkgconfig config
+  * Ignore some uninstalled files
+
+ -- Eric Dorland <eric@debian.org>  Sat, 14 Dec 2024 01:12:17 -0500
+
+npth (1.8-1) unstable; urgency=medium
+
+  * New upstream release (Closes: #1080462)
+  * Import new signing key
+  * Update to version 4 watch file
+  * Remove unnecessary --with-prefix, --with-libgpg-error-prefix
+  * Stop installing npth-config
+  * Add new symbols
+
+ -- Eric Dorland <eric@debian.org>  Tue, 10 Dec 2024 13:28:40 -0500
+
+npth (1.6-3.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Rename libraries for 64-bit time_t transition.  Closes: #1063208
+
+ -- Benjamin Drung <bdrung@debian.org>  Wed, 28 Feb 2024 23:58:06 +0000
+
 npth (1.6-3) unstable; urgency=medium
 
   [ Debian Janitor ]

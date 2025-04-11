@@ -1,3 +1,48 @@
+Noteworthy changes in version 1.8 (2024-11-12)  [C3/A3/R0]
+----------------------------------------------
+
+ * Fix npth_cond_signal and npth_cond_broadcast on Windows.  [T7386]
+
+ * New function npth_get_version.  New macros NPTH_VERSION and
+   NPTH_VERSION_NUMBER.
+
+ * Fix INSERT_EXPOSE_RWLOCK_API for musl C library.  [T5664]
+
+ * Add fallback implementation for POSIX semaphore API on macOS.
+   [T7057]
+
+ * Return a run-time error if npth_rwlock_timedrdlock is not
+   supported.  [T7109]
+
+ Release-info: https://dev.gnupg.org/T7387
+
+
+Noteworthy changes in version 1.7 (2024-02-23)  [C2/A2/R0]
+----------------------------------------------
+
+ * The npth-config command is not installed by default, because it is
+   now replaced by use of pkg-config/gpgrt-config with npth.pc.
+   Supply --enable-install-npth-config configure option, if needed.
+
+ * Support for legacy systems w/o pthread_rwlock_t support.  [T4306]
+
+ * New functions npth_poll and npth_ppoll for Unix.  [T5748]
+
+ * Fixes to improve support for 64 bit Windows.
+
+ * Fix declaration conflict using newer mingw versions.  [T5889]
+
+ * Fix build problems on Solaris 11.  [T4491]
+
+ * Fix detecting of the pthread library.  [rPTH6629a4b801]
+
+ * Clean up handling of unsafe semaphores on AIX.  [T6947]
+
+ * Link without -flat_namespace to support macOS 11.  [T5610]
+
+ Release-info: https://dev.gnupg.org/T7010
+
+
 Noteworthy changes in version 1.6 (2018-07-16)  [C1/A1/R2]
 ----------------------------------------------
 

@@ -1,4 +1,5 @@
-libnpth.so.0 libnpth0 #MINVER#
+libnpth.so.0 libnpth0t64 #MINVER#
+* Build-Depends-Package: libnpth0-dev
  NPTH_1.0@NPTH_1.0 0.90
  npth_accept@NPTH_1.0 0.90
  npth_clock_gettime@NPTH_1.0 0.90
@@ -7,12 +8,15 @@ libnpth.so.0 libnpth0 #MINVER#
  npth_connect@NPTH_1.0 0.90
  npth_create@NPTH_1.0 0.90
  npth_exit@NPTH_1.0 0.90
+ npth_get_version@NPTH_1.0 1.8
  npth_getname_np@NPTH_1.0 0.90
  npth_init@NPTH_1.0 0.90
  npth_is_protected@NPTH_1.0 1.4
  npth_join@NPTH_1.0 0.90
  npth_mutex_lock@NPTH_1.0 0.90
  npth_mutex_timedlock@NPTH_1.0 0.90
+ npth_poll@NPTH_1.0 1.8
+ npth_ppoll@NPTH_1.0 1.8
  npth_protect@NPTH_1.0 0.90
  npth_pselect@NPTH_1.0 0.90
  npth_read@NPTH_1.0 0.90
