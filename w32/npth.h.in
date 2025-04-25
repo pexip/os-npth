@@ -38,8 +38,8 @@ extern "C" {
 /* The version and the version number of this header should match the
  * one of the library.  Use the latter in your application to test for
  * minor API changes.  Use npth_get_version for the lib version.  */
-#define NPTH_VERSION "1.8"
-#define NPTH_VERSION_NUMBER 0x010800
+#define NPTH_VERSION "@PACKAGE_VERSION@"
+#define NPTH_VERSION_NUMBER @VERSION_NUMBER@
 
 
 struct msghdr;

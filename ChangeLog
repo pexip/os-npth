@@ -1,3 +1,385 @@
+2024-11-12  Werner Koch  <wk@gnupg.org>
+
+	Release 1.8.
+	+ commit 64905e765aad9de6054ef70a97fc30bd992ce999
+
+
+	New function npth_get_version and new version macros.
+	+ commit 3c5c9df3cfce0e60fccf2defd534d48269317400
+	* w32/npth.h: Rename to ...
+	* w32/npth.h.in: this.
+	(NPTH_VERSION, NPTH_VERSION_NUMBER): New.
+	(npth_get_version): New.
+	* src/npth.h.in (NPTH_VERSION, NPTH_VERSION_NUMBER): New.
+	(npth_get_version): New.
+
+	* src/npth.c: Include getversion.c
+	* w32/npth.c: Ditto.
+	* src/getversion.c: New.
+	* src/libnpth.vers: Add npth_get_version.
+	* w32/npth.def: Ditto.
+	* src/Makefile.am: Add new file.
+	* tests/Makefile.am (AM_CPPFLAGS): Change -I to the build directory
+	for Windows.
+
+	* autogen.sh: Update from current gpgrt.
+	* configure.ac: Append commit id to the VERSION file.
+	(BUILD_COMMITID): New ac_define.
+	(VERSION_NUMBER): New ac_subst.
+	(AH_BOTTOM): New.
+
+2024-11-12  NIIBE Yutaka  <gniibe@fsij.org>
+
+	w32: Fix npth_cond_signal and npth_cond_broadcast.
+	+ commit e369dd721762262fd0f85361b348207ced13c6b2
+	* w32/npth.c (struct dl): New struct.
+	(struct npth_impl_s): Have the struct dl at top.
+	(dequeue_thread, enqueue_thread): Replace old implementation.
+	(new_thread): Fix for the double linked list.
+	(free_thread): Likewise.
+	(struct npth_cond_s): Have the struct dl.
+	(npth_cond_init, npth_cond_destroy): Fix for the double linked list.
+	(npth_cond_signal, npth_cond_broadcast): Fix to update the list
+	correctly.
+	(npth_cond_wait, npth_cond_timedwait): Fix for the double linked list.
+
+	tests: Add a test with condition variable.
+	+ commit a86421fc08f4f8a2fc769e6940ab5885ebf3d930
+	* tests/Makefile.am (TESTS): Add t-cond.
+	* tests/t-cond.c: New.
+
+2024-11-11  NIIBE Yutaka  <gniibe@fsij.org>
+
+	w32: Fix confusion about INVALID_HANDLE_VALUE.  Fix leak.
+	+ commit 91b5684b41940c41192a5e451c3f1e6e46e47828
+	* w32/npth.c (new_thread): Use NULL instead of INVALID_HANDLE_VALUE.
+	(free_thread): Close ->EVENT.
+	(npth_cond_wait): Use NULL instead of INVALID_HANDLE_VALUE.
+	(npth_cond_timedwait): Likewise.
+	(npth_eselect): Use NULL for sock_event.
+
+	w32: Fix value type mismatch for thread impl.
+	+ commit 3ac046be9214f84b80277e0d72b91cfe17cdf27a
+	* w32/npth.c (npth_cond_signal): Use NULL.
+
+2024-05-13  NIIBE Yutaka  <gniibe@fsij.org>
+
+	Fix previous commit.
+	+ commit 75c68399ef3bbb5d024f2a60474a7214fa479016
+
+
+2024-05-07  NIIBE Yutaka  <gniibe@fsij.org>
+
+	Return a run-time error if npth_rwlock_timedrdlock is not supported.
+	+ commit 01f03a91c9bd63910995aeef412beb3ca6dc9a67
+	* src/npth.c (npth_rwlock_timedrdlock): Return ENOSYS if not
+	supported.
+	(npth_rwlock_timedwrlock): Use HAVE_PTHREAD_RWLOCK_TRYWRLOCK.
+
+2024-03-27  NIIBE Yutaka  <gniibe@fsij.org>
+
+	MacOS: Add fallback implementation for POSIX semaphore API.
+	+ commit f1021c211e3341676dd5707a289fb1a0dfd3df7e
+	* configure.ac [*-apple-darwin*] (HAVE_NO_POSIX_SEMAPHORE): New.
+	* src/npth.c [HAVE_NO_POSIX_SEMAPHORE] (sem_init, sem_post, sem_wait):
+	New.
+
+2024-03-01  NIIBE Yutaka  <gniibe@fsij.org>
+
+	Fix INSERT_EXPOSE_RWLOCK_API for musl C library.
+	+ commit 417abd56fd7bf45cd4948414050615cb1ad59134
+	* configure.ac: Add a case for musl system.
+
+2024-02-23  Werner Koch  <wk@gnupg.org>
+
+	Release 1.7.
+	+ commit 150dc11942c90ff8190c2d48344eb4c1c48c7cd8
+	* configure.ac: Bump LT version C2/A2/R0.
+
+	Add a release build target.
+	+ commit f0091f3ef96acd4bc879f7bc9700679a0f619d21
+	* Makefile.am: Add release targets.
+
+2024-01-22  NIIBE Yutaka  <gniibe@fsij.org>
+
+	Clean up handling of unsafe semaphore.
+	+ commit 99e1174f6054d94364a86b00203a1ccf35eb3b69
+	* configure.ac (HAVE_FORK_UNSAFE_SEMAPHORE): Remove.
+	(NPTH_FORK_FAILURE): New conditional.
+	* src/npth.c (NPTH_SEMAPHORE_PSHARED): Remove.
+	(npth_init): Simply use a semaphore not shared by multiple processes.
+	* tests/Makefile.am (t-fork): XFAIL_TESTS on AIX.
+
+2023-09-01  NIIBE Yutaka  <gniibe@fsij.org>
+
+	build: Change the default for --with-libtool-modification.
+	+ commit e6b90ae73222d240ae80fe62718ae270e07a0547
+	* configure.ac (--with-libtool-modification): default=never.
+
+2023-08-16  NIIBE Yutaka  <gniibe@fsij.org>
+
+	build: New configure option --with-libtool-modification.
+	+ commit bcbcb7649229f0c709747dde50884fe87e93587f
+	* Makefile.am (EXTRA_DIST): Add build-aux/libtool-patch.sed.
+	* build-aux/libtool-patch.sed: New.
+	* configure.ac (--with-libtool-modification): New.
+	* build-aux/ltmain.sh: Revert our own local modification.
+
+2023-05-30  NIIBE Yutaka  <gniibe@fsij.org>
+
+	w32: Initialize variable to silence compiler warning.
+	+ commit a075e11080bfdf56293bccead23e4287f18be565
+	* w32/npth.c (mutex_init_check): Initialize.
+
+2023-05-12  NIIBE Yutaka  <gniibe@fsij.org>
+
+	tests: Use -no-fast-install LDFLAGS for Windows.
+	+ commit 7b9dc4d24979f6054c5cb51f72b7a741fc802d41
+	* tests/Makefile.am [HAVE_W32_SYSTEM] (AM_LDFLAGS): Conditionalize.
+
+2023-04-14  NIIBE Yutaka  <gniibe@fsij.org>
+
+	w32: Fix npth_rwlock_destroy.
+	+ commit fc7ee9524991c74aee46dc55f17467d077004666
+	* w32/npth.c (npth_rwlock_destroy): Dereference RWLOCK.
+
+2023-01-17  NIIBE Yutaka  <gniibe@fsij.org>
+
+	POSIX: Don't include unused symbols in the version control.
+	+ commit bd356d82394447b51b2505756094d6475e160a4b
+	* src/libnpth.vers: Remove npth_sigmask and npth_sigwait symbols.
+
+2022-11-01  NIIBE Yutaka  <gniibe@fsij.org>
+
+	build: Prefer gpgrt-config when available.
+	+ commit 3939b86b20d1c6a828b1dbe67f523cc0a4ebecf6
+	* src/npth.m4: Overriding the decision by --with-npth-prefix, use
+	gpgrt-config npth when gpgrt-config is available.
+
+2022-10-05  NIIBE Yutaka  <gniibe@fsij.org>
+
+	w32: Add comment for our intentional casting for TlsSetValue.
+	+ commit e894f0197fb48cd0957abc994ac9dd8a960950c6
+	* w32/npth.c (npth_setspecific): Use union to express it's
+	intentional casting.
+
+2022-09-21  NIIBE Yutaka  <gniibe@fsij.org>
+
+	Revert "Don't use symbol/macro which starts with _."
+	+ commit 61ae94a7489aff4e4142d722bdaf577b5d71fb53
+	This reverts commit 317885a6b11ff6cb3c7c6134be37f345751d807c.
+
+2022-09-20  NIIBE Yutaka  <gniibe@fsij.org>
+
+	Don't use symbol/macro which starts with _.
+	+ commit 317885a6b11ff6cb3c7c6134be37f345751d807c
+	* configure.ac (npth_socklen_t): Rename from _npth_socklen_t.
+	(NPTH_NO_RWLOCK): Rename from _NPTH_NO_RWLOCK.
+	* src/npth-sigev.c (sigev_handler): Rename from _sigev_handler.
+	* src/npth.c: Use NPTH_NO_RWLOCK.
+	* src/npth.h.in: Use NPTH_H, NPTH_NO_RWLOCK, and npth_socklen_t.
+	* w32/npth.c (npth_debug): Rename from _npth_debug.
+	* w32/npth.h: Use NPTH_H.
+
+2022-07-19  NIIBE Yutaka  <gniibe@fsij.org>
+
+	build: Update config.guess and config.sub.
+	+ commit 70fb608c3bf733a0da8c23b9b3e997ab1fb6739a
+	* build-aux/config.guess: Update from upstream.
+	* build-aux/config.sub: Ditto.
+
+2022-03-31  NIIBE Yutaka  <gniibe@fsij.org>
+
+	build: Don't install npth-config by default.
+	+ commit 2b6a8e5369ed37d64d1bafd3a546ec52e25acd26
+	* configure.ac (--enable-install-npth-config): New.
+	* Makefile.am: Conditionalize installation of npth-config.
+
+2022-03-24  NIIBE Yutaka  <gniibe@fsij.org>
+
+	w32: Remove fallback definition of struct timespec.
+	+ commit ebdc0da1fc416cb9f7edf9e490a15b7a8fe94b55
+	* w32/npth.h [!__MINGW64_VERSION_MAJOR] (struct timespec): Remove.
+
+2022-03-23  NIIBE Yutaka  <gniibe@fsij.org>
+
+	build: Don't include src/npth.h in the distribution.
+	+ commit 7e83227e18a42c051c4cc6a1f68188d556764ab2
+	* src/Makefile.am (libnpth_la_SOURCES): Remove npth.h.
+
+2022-03-22  NIIBE Yutaka  <gniibe@fsij.org>
+
+	w32: Don't allocate attribute internally.
+	+ commit ed674b9eb2187bf5ea517b2d1fbbb88e667964aa
+	* w32/npth.c (npth_create): Examine ->detachstate directly when
+	USER_ATTR != NULL.  Remove allocation of ATTR.
+	(npth_rwlock_init): Examine ->kind directly when USER_ATTR != NULL.
+	Remove allocation of ATTR.
+	(npth_clock_gettime): Remove unused USECS variable.
+	(calculate_timeout, npth_tryjoin_np): Remove unused RES variable.
+	(npth_join, onpth_mutex_trylock): Likewise.
+	(npth_cond_broadcast): Remove unused ANY variable.
+	(rwlock_init_check): It's not used, so, if-out by preprocessor.
+	(npth_eselect): Remove unused sock_event_idx variable.
+
+2022-01-25  NIIBE Yutaka  <gniibe@fsij.org>
+
+	Fix npth_ppoll when !HAVE_PPOLL.
+	+ commit 0e16575e69a359de5564d1874ef24e93e1561718
+	* src/npth.c [!HAVE_PPOLL] (npth_ppoll): Use T to call poll.
+
+2021-12-22  NIIBE Yutaka  <gniibe@fsij.org>
+
+	posix: Add npth_poll/npth_ppoll.
+	+ commit b5ecd8d2c6fdb988f6139c5157c124ebea293bd7
+	* configure.ac: Add checks for poll.h and ppoll.
+
+	build: Remove unused m4/sys_socket_h.m4.
+	+ commit e73ae33adfbc570d06b8f791e2cd731168582646
+	* m4/sys_socket_h.m4: Remove.
+
+2021-11-10  NIIBE Yutaka  <gniibe@fsij.org>
+
+	libtool: Link without -flat_namespace for macOS.
+	+ commit 854b3fd1d66c968d76d7df1fea60671215af1380
+	* m4/libtool.m4: Not setting 10.0 to MACOSX_DEPLOYMENT_TARGET when not
+	defined.  Only specify -flat_namespace to linker for specific
+	(older) versions and hosts.
+
+2021-05-31  NIIBE Yutaka  <gniibe@fsij.org>
+
+	build: Add -Wpointer-arith if available.
+	+ commit 5020c2b9c9398b7c744742f4a6c32efc2b54dc14
+	* configure.ac: Add -Wpointer-arith if available.
+
+	tests: Minor fixes for test programs.
+	+ commit 1b4ca92e720cdc047e0b795fdc5ed966af8bdf32
+	* tests/t-mutex.c (main): Support --verbose to put verbose messages.
+	* tests/t-thread.c (thread_one): Remove unused variable.
+
+2021-05-14  NIIBE Yutaka  <gniibe@fsij.org>
+
+	build: Fix detecting pthread library.
+	+ commit 6629a4b8015cc8298ea00144c56c9ca8828357ba
+	* configure.ac: Use pthread_cancel to detect pthread library.
+
+2020-11-17  NIIBE Yutaka  <gniibe@fsij.org>
+
+	m4: Update with newer autoconf constructs.
+	+ commit 7e45b50a4034735bad8ba99a003bbf986c664d8c
+	* src/npth.m4: Replace AC_HELP_STRING to AS_HELP_STRING.
+
+	build: Update to newer autoconf constructs.
+	+ commit f73f942286521045795b7caeb2e54e1b81f88d19
+	* configure.ac: Use AC_USE_SYSTEM_EXTENSIONS instead of AC_GNU_SOURCE.
+	Use AS_HELP_STRING instead of AC_HELP_STRING.
+	* m4/socklen.m4: Update from gnulib.
+	* m4/libtool.m4: Update from libgpg-error.
+
+2020-08-24  NIIBE Yutaka  <gniibe@fsij.org>
+
+	Conditionally enable busy_wait_for.
+	+ commit 02ce6b2d27f91ed6285e4e92d99c21bcc7823c9b
+	* src/npth.c [!HAVE_PTHREAD_MUTEX_TIMEDLOCK] (busy_wait_for):
+	Conditionalize.
+
+2019-12-16  NIIBE Yutaka  <gniibe@fsij.org>
+
+	Fix how we expose rwlock API.
+	+ commit 09a12a679ec0bb3d8a46757c8df65166949eb223
+	* configure.ac (INSERT_EXPOSE_RWLOCK_API): Don't use CPP macro
+	_NPTH_EXPOSE_RWLOCK_API.
+	* src/npth.h.in: Directly put the subst var of
+	INSERT_EXPOSE_RWLOCK_API.
+
+2019-07-18  NIIBE Yutaka  <gniibe@fsij.org>
+
+	build: With LD_LIBRARY_PATH defined, use --disable-new-dtags.
+	+ commit 2501a48930eb3724a3bb29c9b8fd6eab13ef77ba
+	* configure.ac (LDADD_FOR_TESTS_KLUDGE): New for --disable-new-dtags.
+	* tests/Makefile.am (LDADD): Use LDADD_FOR_TESTS_KLUDGE.
+
+	build: Add -no-install for LDFLAGS of test programs.
+	+ commit 6b8ed75b40e6ff6baa85fbd71e2dc2eb17d75b4d
+	* tests/Makefile.am (AM_LD_FLAGS): Add -no-install.
+
+2019-05-15  NIIBE Yutaka  <gniibe@fsij.org>
+
+	Limit exposing rwlock API on GNU/Linux.
+	+ commit 575573b5b63e147b1906240f192dbe37a26ca4b9
+	* configure.ac (INSERT_EXPOSE_RWLOCK_API): New.
+	* src/npth.h.in: Use INSERT_EXPOSE_RWLOCK_API.
+	* tests/Makefile.am (AM_CPPFLAGS): Remove _POSIX_C_SOURCE.
+
+2019-01-23  NIIBE Yutaka  <gniibe@fsij.org>
+
+	build: Define _NPTH_NO_RWLOCK when we can't find pthread_rwlock_t.
+	+ commit 223e59f992f9ea63563a8ad070b2f56fb1bbd83b
+	* configure.ac (INSERT_NO_RWLOCK): New.
+	* src/npth.h.in (@INSERT_NO_RWLOCK@): Use.
+
+2018-11-08  NIIBE Yutaka  <gniibe@fsij.org>
+
+	w32: Use cast by uintptr_t for thread ID.
+	+ commit 377c1b91e67af25613ccb72ee26449661cea8d8e
+	* w32/npth.c (npth_init): Cast with uintptr_t.
+	(npth_setname_np, npth_create, npth_self): Likewise.
+
+2018-11-02  NIIBE Yutaka  <gniibe@fsij.org>
+
+	npth.m4: Emit message when using gpgrt-config.
+	+ commit f8ceac80d9709f40358190d919b3215036a68ba1
+	* npth.m4: Add AC_MSG_NOTICE.
+
+2018-10-29  NIIBE Yutaka  <gniibe@fsij.org>
+
+	npth.m4: Assume new gpgrt-config.
+	+ commit a41676fb87edb06acfba0290b37a86ffc760d9e3
+	* npth.m4: Don't supply CC but use --libdir.
+
+2018-10-26  NIIBE Yutaka  <gniibe@fsij.org>
+
+	More fix.
+	+ commit 8c16b5ee245173d14e558b366d90d2329ce699af
+
+
+	Fix previous commit.
+	+ commit c9b6a5e1cf851097440a8e8fac1e07f3174ad8aa
+
+
+	npth.m4: Better backward compatibility.
+	+ commit 7638c3579c2212817f0c6345d77b1e03067be33f
+	* npth.m4: Don't assume npth-config is newer.
+
+	build: Improve npth.m4.
+	+ commit c540909055c3523d29c255fc3e0314ad773b1832
+	* src/npth.m4: Don't try gpgrt-config when NPTH_CONFIG set.  Fall back
+	to detecting npth-config, when gpgrt-config doesn't work well.
+
+2018-10-25  NIIBE Yutaka  <gniibe@fsij.org>
+
+	build: Relax requirement of gpg-error-config.
+	+ commit 7a1d2dcecce3495e6aefc26892a4abb269228e9d
+	* npth.m4: Don't require AM_PATH_GPG_ERROR.
+
+2018-10-24  NIIBE Yutaka  <gniibe@fsij.org>
+
+	build: Compatibility to pkg-config.
+	+ commit 5fb67e0e597569dc4f4c12534fb13167bf71a0b2
+	* npth-config.in: Support --variable and --modversion.
+
+	build: Make npth.m4 use gpg-error-config.
+	+ commit a48b6aec3659114e5b9a4cfd34f90bbcd777eb66
+	* npth.m4: Use gpg-error-config.
+
+	build: Provide npth.pc, generated by configure.
+	+ commit f3cbbc86cb49a1729d6df573bd76a5559e7f636b
+	* configure.ac: Generate npth.pc.
+	* Makefile.am (pkgconfigdir, pkgconfig_DATA): New.
+	(EXTRA_DIST): Add npth.pc.in.
+	* npth-config.in: Use @PACKAGE_VERSION@.
+	* npth.pc.in: New.
+
 2018-07-16  Werner Koch  <wk@gnupg.org>
 
 	Release 1.6.
