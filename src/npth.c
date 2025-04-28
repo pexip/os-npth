@@ -29,15 +29,16 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#ifdef HAVE_LIB_DISPATCH
-# include <dispatch/dispatch.h>
-typedef dispatch_semaphore_t sem_t;
 
+/* nPth uses the API of sem_init, sem_post, and sem_wait.  */
+#ifdef HAVE_LIB_DISPATCH
 /* This glue code is for macOS which does not have full implementation
    of POSIX semaphore.  On macOS, using semaphore in Grand Central
    Dispatch library is better than using the partial implementation of
    POSIX semaphore where sem_init doesn't work well.
  */
+# include <dispatch/dispatch.h>
+typedef dispatch_semaphore_t sem_t;
 
 static int
 sem_init (sem_t *sem, int is_shared, unsigned int value)
@@ -62,14 +63,80 @@ sem_wait (sem_t *sem)
   dispatch_semaphore_wait (*sem, DISPATCH_TIME_FOREVER);
   return 0;
 }
+#elif HAVE_NO_POSIX_SEMAPHORE
+/* Fallback implementation without POSIX semaphore,
+   for a system like MacOS Tiger and Leopard.  */
+typedef struct {
+  pthread_mutex_t mutex;
+  pthread_cond_t cond;
+  unsigned int value;
+} sem_t;
+
+static int
+sem_init (sem_t *sem, int is_shared, unsigned int value)
+{
+  int r;
+
+  (void)is_shared;              /* Not supported.  */
+  r = pthread_mutex_init (&sem->mutex, NULL);
+  if (r)
+    return r;
+  r = pthread_cond_init (&sem->cond, NULL);
+  if (r)
+    return r;
+  sem->value = value;
+  return 0;
+}
+
+static int
+sem_post (sem_t *sem)
+{
+  int r;
+
+  r = pthread_mutex_lock (&sem->mutex);
+  if (r)
+    return r;
+
+  sem->value++;
+  pthread_cond_signal (&sem->cond);
+
+  r = pthread_mutex_unlock (&sem->mutex);
+  if (r)
+    return r;
+  return 0;
+}
+
+static int
+sem_wait (sem_t *sem)
+{
+  int r;
+
+  r = pthread_mutex_lock (&sem->mutex);
+  if (r)
+    return r;
+
+  while (sem->value == 0)
+    pthread_cond_wait (&sem->cond, &sem->mutex);
+  sem->value--;
+
+  r = pthread_mutex_unlock (&sem->mutex);
+  if (r)
+    return r;
+  return 0;
+}
 #else
+/* Use POSIX semaphore when available.  */
 # include <semaphore.h>
 #endif
+
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
 #endif
 #ifndef HAVE_PSELECT
 # include <signal.h>
+#endif
+#ifdef HAVE_POLL_H
+#include <poll.h>
 #endif
 
 #include "npth.h"
@@ -88,32 +155,6 @@ sem_wait (sem_t *sem)
 static sem_t sceptre_buffer;
 static sem_t *sceptre = &sceptre_buffer;
 static int got_sceptre;
-
-/* Configure defines HAVE_FORK_UNSAFE_SEMAPHORE if child process can't
-   access non-shared unnamed semaphore which is created by its parent.
-
-   We use unnamed semaphore (if available) for the global lock.  The
-   specific semaphore is only valid for those threads in a process,
-   and it is no use by other processes.  Thus, PSHARED argument for
-   sem_init is naturally 0.
-
-   However, there are daemon-like applications which use fork after
-   npth's initialization by npth_init.  In this case, a child process
-   uses the semaphore which was created by its parent process, while
-   parent does nothing with the semaphore.  In some system (e.g. AIX),
-   access by child process to non-shared unnamed semaphore is
-   prohibited.  For such a system, HAVE_FORK_UNSAFE_SEMAPHORE should
-   be defined, so that unnamed semaphore will be created with the
-   option PSHARED=1.  The purpose of the setting of PSHARED=1 is only
-   for allowing the access of the lock by child process.  For NPTH, it
-   does not mean any other interactions between processes.
-
- */
-#ifdef HAVE_FORK_UNSAFE_SEMAPHORE
-#define NPTH_SEMAPHORE_PSHARED 1
-#else
-#define NPTH_SEMAPHORE_PSHARED 0
-#endif
 
 /* The main thread is the active thread at the time pth_init was
    called.  As of now it is only useful for debugging.  The volatile
@@ -136,6 +177,19 @@ static int initialized_or_any_threads;
 
 typedef int (*trylock_func_t) (void *);
 
+#ifndef HAVE_PTHREAD_MUTEX_TIMEDLOCK
+#define REQUIRE_THE_BUSY_WAIT_FOR_IMPLEMENTATION 1
+#endif
+
+#if !HAVE_PTHREAD_RWLOCK_TIMEDRDLOCK && HAVE_PTHREAD_RWLOCK_TRYRDLOCK
+#define REQUIRE_THE_BUSY_WAIT_FOR_IMPLEMENTATION 1
+#endif
+
+#if !HAVE_PTHREAD_RWLOCK_TIMEDWRLOCK && HAVE_PTHREAD_RWLOCK_TRYWRLOCK
+#define REQUIRE_THE_BUSY_WAIT_FOR_IMPLEMENTATION 1
+#endif
+
+#if REQUIRE_THE_BUSY_WAIT_FOR_IMPLEMENTATION
 static int
 busy_wait_for (trylock_func_t trylock, void *lock,
 	       const struct timespec *abstime)
@@ -174,7 +228,7 @@ busy_wait_for (trylock_func_t trylock, void *lock,
 
   return err;
 }
-
+#endif
 
 static void
 enter_npth (void)
@@ -220,8 +274,8 @@ npth_init (void)
      sem_init.  */
   errno = 0;
 
-  /* The semaphore is binary.  */
-  res = sem_init (sceptre, NPTH_SEMAPHORE_PSHARED, 1);
+  /* The semaphore is not shared and binary.  */
+  res = sem_init (sceptre, 0, 1);
   /* There are some versions of operating systems which have sem_init
      symbol defined but the call actually returns ENOSYS at runtime.
      We know this problem for older versions of AIX (<= 4.3.3) and
@@ -446,9 +500,11 @@ npth_rwlock_timedrdlock (npth_rwlock_t *rwlock, const struct timespec *abstime)
   ENTER();
 #if HAVE_PTHREAD_RWLOCK_TIMEDRDLOCK
   err = pthread_rwlock_timedrdlock (rwlock, abstime);
-#else
+#elif HAVE_PTHREAD_RWLOCK_TRYRDLOCK
   err = busy_wait_for ((trylock_func_t) pthread_rwlock_tryrdlock, rwlock,
 		       abstime);
+#else
+  err = ENOSYS;
 #endif
   LEAVE();
   return err;
@@ -491,7 +547,7 @@ npth_rwlock_timedwrlock (npth_rwlock_t *rwlock, const struct timespec *abstime)
   ENTER();
 #if HAVE_PTHREAD_RWLOCK_TIMEDWRLOCK
   err = pthread_rwlock_timedwrlock (rwlock, abstime);
-#elif HAVE_PTHREAD_RWLOCK_TRYRDLOCK
+#elif HAVE_PTHREAD_RWLOCK_TRYWRLOCK
   err = busy_wait_for ((trylock_func_t) pthread_rwlock_trywrlock, rwlock,
 		       abstime);
 #else
@@ -675,6 +731,69 @@ npth_pselect(int nfd, fd_set *rfds, fd_set *wfds, fd_set *efds,
 }
 
 
+int
+npth_poll (struct pollfd *fds, unsigned long nfds, int timeout)
+{
+  int res;
+
+  ENTER();
+  res = poll (fds, (nfds_t)nfds, timeout);
+  LEAVE();
+  return res;
+}
+
+
+int
+npth_ppoll (struct pollfd *fds, unsigned long nfds,
+            const struct timespec *timeout, const sigset_t *sigmask)
+{
+  int res;
+
+  ENTER();
+#ifdef HAVE_PPOLL
+  res = ppoll (fds, (nfds_t)nfds, timeout, sigmask);
+#else /*!HAVE_PPOLL*/
+  {
+#   ifdef __GNUC__
+#     warning Using a non race free ppoll emulation.
+#   endif
+
+    int t;
+
+    if (!timeout)
+      t = -1;
+    else if (timeout->tv_nsec >= 0 && timeout->tv_nsec < 1000000000)
+      t = timeout->tv_sec * 1000 + (timeout->tv_nsec + 999999) / 1000000;
+    else
+      {
+        errno = EINVAL;
+        res = -1;
+        goto leave;
+      }
+
+    if (sigmask)
+      {
+        int save_errno;
+        sigset_t savemask;
+
+        pthread_sigmask (SIG_SETMASK, sigmask, &savemask);
+        res = poll (fds, (nfds_t)nfds, t);
+        save_errno = errno;
+        pthread_sigmask (SIG_SETMASK, &savemask, NULL);
+        errno = save_errno;
+      }
+    else
+      res = poll (fds, (nfds_t)nfds, t);
+
+  leave:
+    ;
+  }
+#endif
+  LEAVE();
+  return res;
+}
+
+
 ssize_t
 npth_read(int fd, void *buf, size_t nbytes)
 {
@@ -773,3 +892,7 @@ npth_clock_gettime (struct timespec *ts)
 # error clock_gettime not available - please provide a fallback.
 #endif
 }
+
+
+#include "getversion.c"
+/* end of file */

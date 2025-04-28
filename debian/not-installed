@@ -1,0 +1,2 @@
+debian/tmp/usr/*-mingw32/share/aclocal/npth.m4
+debian/tmp/usr/lib/*/*.la

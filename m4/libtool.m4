@@ -34,7 +34,7 @@ m4_define([_LT_COPYING], [dnl
 #
 # You should have received a copy of the GNU General Public License
 # along with GNU Libtool; see the file COPYING.  If not, a copy
-# can be downloaded from http://www.gnu.org/licenses/gpl.html, or
+# can be downloaded from https://www.gnu.org/licenses/gpl.html, or
 # obtained by writing to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 ])
@@ -1045,16 +1045,11 @@ _LT_EOF
       _lt_dar_allow_undefined='${wl}-undefined ${wl}suppress' ;;
     darwin1.*)
       _lt_dar_allow_undefined='${wl}-flat_namespace ${wl}-undefined ${wl}suppress' ;;
-    darwin*) # darwin 5.x on
-      # if running on 10.5 or later, the deployment target defaults
-      # to the OS version, if on x86, and 10.4, the deployment
-      # target defaults to 10.4. Don't you love it?
-      case ${MACOSX_DEPLOYMENT_TARGET-10.0},$host in
-	10.0,*86*-darwin8*|10.0,*-darwin[[91]]*)
-	  _lt_dar_allow_undefined='${wl}-undefined ${wl}dynamic_lookup' ;;
-	10.[[012]]*)
+    darwin*)
+      case ${MACOSX_DEPLOYMENT_TARGET},$host in
+	10.[[012]]*,*|,*powerpc*)
 	  _lt_dar_allow_undefined='${wl}-flat_namespace ${wl}-undefined ${wl}suppress' ;;
-	10.*)
+	*)
 	  _lt_dar_allow_undefined='${wl}-undefined ${wl}dynamic_lookup' ;;
       esac
     ;;
@@ -1326,7 +1321,10 @@ s390*-*linux*|s390*-*tpf*|sparc*-*linux*)
 	  x86_64-*linux*)
 	    LD="${LD-ld} -m elf_i386"
 	    ;;
-	  ppc64-*linux*|powerpc64-*linux*)
+         powerpc64le-*)
+           LD="${LD-ld} -m elf32lppclinux"
+           ;;
+         powerpc64-*)
 	    LD="${LD-ld} -m elf32ppclinux"
 	    ;;
 	  s390x-*linux*)
@@ -1345,7 +1343,10 @@ s390*-*linux*|s390*-*tpf*|sparc*-*linux*)
 	  x86_64-*linux*)
 	    LD="${LD-ld} -m elf_x86_64"
 	    ;;
-	  ppc*-*linux*|powerpc*-*linux*)
+         powerpcle-*)
+           LD="${LD-ld} -m elf64lppc"
+           ;;
+         powerpc-*)
 	    LD="${LD-ld} -m elf64ppc"
 	    ;;
 	  s390*-*linux*|s390*-*tpf*)
@@ -2512,6 +2513,17 @@ freebsd* | dragonfly*)
   esac
   ;;
 
+gnu*)
+  version_type=linux # correct to gnu/linux during the next big refactor
+  need_lib_prefix=no
+  need_version=no
+  library_names_spec='${libname}${release}${shared_ext}$versuffix ${libname}${release}${shared_ext}${major} ${libname}${shared_ext}'
+  soname_spec='${libname}${release}${shared_ext}$major'
+  shlibpath_var=LD_LIBRARY_PATH
+  shlibpath_overrides_runpath=no
+  hardcode_into_libs=yes
+  ;;
+
 haiku*)
   version_type=linux # correct to gnu/linux during the next big refactor
   need_lib_prefix=no
@@ -2648,7 +2660,7 @@ linux*android*)
   ;;
 
 # This must be glibc/ELF.
-linux* | k*bsd*-gnu | kopensolaris*-gnu | gnu*)
+linux* | k*bsd*-gnu | kopensolaris*-gnu)
   version_type=linux # correct to gnu/linux during the next big refactor
   need_lib_prefix=no
   need_version=no
@@ -3264,6 +3276,10 @@ freebsd* | dragonfly*)
   fi
   ;;
 
+gnu*)
+  lt_cv_deplibs_check_method=pass_all
+  ;;
+
 haiku*)
   lt_cv_deplibs_check_method=pass_all
   ;;
@@ -3302,7 +3318,7 @@ irix5* | irix6* | nonstopux*)
   ;;
 
 # This must be glibc/ELF.
-linux* | k*bsd*-gnu | kopensolaris*-gnu | gnu*)
+linux* | k*bsd*-gnu | kopensolaris*-gnu)
   lt_cv_deplibs_check_method=pass_all
   ;;
 
@@ -4054,7 +4070,7 @@ m4_if([$1], [CXX], [
 	    ;;
 	esac
 	;;
-      linux* | k*bsd*-gnu | kopensolaris*-gnu | gnu*)
+      linux* | k*bsd*-gnu | kopensolaris*-gnu)
 	case $cc_basename in
 	  KCC*)
 	    # KAI C++ Compiler
@@ -4353,7 +4369,7 @@ m4_if([$1], [CXX], [
       _LT_TAGVAR(lt_prog_compiler_static, $1)='-non_shared'
       ;;
 
-    linux* | k*bsd*-gnu | kopensolaris*-gnu | gnu*)
+    linux* | k*bsd*-gnu | kopensolaris*-gnu)
       case $cc_basename in
       # old Intel for x86_64 which still supported -KPIC.
       ecc*)
@@ -6246,6 +6262,9 @@ if test "$_lt_caught_CXX_error" != yes; then
         _LT_TAGVAR(ld_shlibs, $1)=yes
         ;;
 
+      gnu*)
+        ;;
+
       haiku*)
         _LT_TAGVAR(archive_cmds, $1)='$CC -shared $libobjs $deplibs $compiler_flags ${wl}-soname $wl$soname -o $lib'
         _LT_TAGVAR(link_all_deplibs, $1)=yes
@@ -6407,7 +6426,7 @@ if test "$_lt_caught_CXX_error" != yes; then
         _LT_TAGVAR(inherit_rpath, $1)=yes
         ;;
 
-      linux* | k*bsd*-gnu | kopensolaris*-gnu | gnu*)
+      linux* | k*bsd*-gnu | kopensolaris*-gnu)
         case $cc_basename in
           KCC*)
 	    # Kuck and Associates, Inc. (KAI) C++ Compiler
@@ -7450,7 +7469,7 @@ AC_LANG_POP
 # to write the compiler configuration to `libtool'.
 m4_defun([_LT_LANG_GCJ_CONFIG],
 [AC_REQUIRE([LT_PROG_GCJ])dnl
-AC_LANG_SAVE
+AC_LANG_PUSH([Java])
 
 # Source file extension for Java test sources.
 ac_ext=java
@@ -7506,7 +7525,7 @@ if test -n "$compiler"; then
   _LT_CONFIG($1)
 fi
 
-AC_LANG_RESTORE
+AC_LANG_POP
 
 GCC=$lt_save_GCC
 CC=$lt_save_CC
@@ -7521,7 +7540,7 @@ CFLAGS=$lt_save_CFLAGS
 # to write the compiler configuration to `libtool'.
 m4_defun([_LT_LANG_GO_CONFIG],
 [AC_REQUIRE([LT_PROG_GO])dnl
-AC_LANG_SAVE
+AC_LANG_PUSH([Go])
 
 # Source file extension for Go test sources.
 ac_ext=go
@@ -7577,7 +7596,7 @@ if test -n "$compiler"; then
   _LT_CONFIG($1)
 fi
 
-AC_LANG_RESTORE
+AC_LANG_POP
 
 GCC=$lt_save_GCC
 CC=$lt_save_CC
@@ -7592,7 +7611,9 @@ CFLAGS=$lt_save_CFLAGS
 # to write the compiler configuration to `libtool'.
 m4_defun([_LT_LANG_RC_CONFIG],
 [AC_REQUIRE([LT_PROG_RC])dnl
-AC_LANG_SAVE
+
+dnl Here, something like AC_LANG_PUSH([RC]) is expected.
+dnl But Resource Compiler is not supported as a language by autoconf
 
 # Source file extension for RC test sources.
 ac_ext=rc
@@ -7631,8 +7652,10 @@ if test -n "$compiler"; then
   _LT_CONFIG($1)
 fi
 
+dnl Here, AC_LANG_POP is expected.
 GCC=$lt_save_GCC
-AC_LANG_RESTORE
+dnl Back to C
+AC_LANG([C])
 CC=$lt_save_CC
 CFLAGS=$lt_save_CFLAGS
 ])# _LT_LANG_RC_CONFIG

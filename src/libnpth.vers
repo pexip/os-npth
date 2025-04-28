@@ -38,8 +38,6 @@ NPTH_1.0 {
     npth_sleep;
     npth_waitpid;
     npth_system;
-    npth_sigmask;
-    npth_sigwait;
     npth_connect;
     npth_accept;
     npth_select;
@@ -61,6 +59,11 @@ NPTH_1.0 {
 
     npth_getname_np;
     npth_setname_np;
+
+    npth_poll;
+    npth_ppoll;
+
+    npth_get_version;
 
   local:
     *;

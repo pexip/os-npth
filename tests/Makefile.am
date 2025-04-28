@@ -18,19 +18,28 @@
 
 ## Process this file with automake to produce Makefile.in
 
-TESTS = t-mutex t-thread
+TESTS = t-mutex t-thread t-cond
+XFAIL_TESTS =
 
-# We explicitly require POSIX.1-2001 so that pthread_rwlock_t is
-# available when build with c99.
 if HAVE_W32_SYSTEM
-AM_CPPFLAGS = -I$(top_srcdir)/w32
-AM_LDFLAGS =
+AM_CPPFLAGS = -I$(top_builddir)/w32
 LDADD = ../w32/libnpth.la $(LIB_CLOCK_GETTIME)
 else
-AM_CPPFLAGS = -I../src -D_POSIX_C_SOURCE=200112L
-AM_LDFLAGS =
+AM_CPPFLAGS = -I../src
 LDADD = ../src/libnpth.la $(LIBSOCKET) $(LIB_CLOCK_GETTIME)
+if NPTH_FORK_FAILURE
+# Fork failure is expected on such a system
+XFAIL_TESTS += t-fork
+else
 TESTS += t-fork
+endif
+endif
+
+LDADD += @LDADD_FOR_TESTS_KLUDGE@
+if HAVE_W32_SYSTEM
+AM_LDFLAGS = -no-fast-install
+else
+AM_LDFLAGS = -no-install
 endif
 
 noinst_HEADERS = t-support.h
